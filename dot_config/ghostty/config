@@ -1,0 +1,120 @@
+# ============================================================================
+# Ghostty Configuration
+# Ghostty + Zellij + AI CLI Development Environment
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# 폰트 설정
+# ----------------------------------------------------------------------------
+font-family = "MesloLGS Nerd Font"
+font-size = 14
+font-thicken = true
+
+# 대체 폰트 (이모지, 한글 등)
+font-family-bold = "MesloLGS Nerd Font"
+font-family-italic = "MesloLGS Nerd Font"
+font-family-bold-italic = "MesloLGS Nerd Font"
+
+# ----------------------------------------------------------------------------
+# 테마 설정
+# 사용 가능: dracula, catppuccin-mocha, catppuccin-latte, nord,
+#           gruvbox-dark, tokyo-night, rose-pine
+# ----------------------------------------------------------------------------
+theme = "Gruvbox Dark Hard"
+
+# ----------------------------------------------------------------------------
+# 창 설정
+# ----------------------------------------------------------------------------
+window-padding-x = 12
+window-padding-y = 8
+window-decoration = true
+window-vsync = true
+window-inherit-working-directory = true
+window-inherit-font-size = true
+
+# 창 크기 (초기값)
+window-width = 160
+window-height = 45
+
+# 배경 투명도 (0.0 ~ 1.0)
+background-opacity = 0.95
+
+# ----------------------------------------------------------------------------
+# macOS 전용 설정
+# ----------------------------------------------------------------------------
+# Option 키를 Alt로 사용 (Zellij 호환성)
+macos-option-as-alt = left
+
+# 네이티브 탭 비활성화 (Zellij 사용)
+macos-titlebar-style = hidden
+macos-window-shadow = true
+
+# ----------------------------------------------------------------------------
+# 커서 설정
+# ----------------------------------------------------------------------------
+cursor-style = block
+cursor-style-blink = true
+cursor-invert-fg-bg = true
+
+# 셸 통합 기능
+shell-integration = zsh
+shell-integration-features = cursor,sudo,title
+
+# ----------------------------------------------------------------------------
+# 키바인딩
+# Zellij와 충돌하는 키바인딩 해제 및 커스텀 설정
+# ----------------------------------------------------------------------------
+
+# Zellij 충돌 방지: 기본 탭/창 단축키 해제
+keybind = cmd+t=unbind
+keybind = cmd+n=unbind
+keybind = cmd+w=unbind
+
+# Alt 화살표 해제 (Zellij 네비게이션용)
+keybind = alt+left=unbind
+keybind = alt+right=unbind
+keybind = alt+up=unbind
+keybind = alt+down=unbind
+
+# 유용한 단축키 추가
+keybind = cmd+shift+enter=new_window
+keybind = cmd+shift+comma=open_config
+keybind = cmd+shift+r=reload_config
+
+# 폰트 크기 조절
+keybind = cmd+plus=increase_font_size:1
+keybind = cmd+minus=decrease_font_size:1
+keybind = cmd+0=reset_font_size
+
+# 클립보드
+keybind = cmd+c=copy_to_clipboard
+keybind = cmd+v=paste_from_clipboard
+
+# ----------------------------------------------------------------------------
+# 스크롤 설정
+# ----------------------------------------------------------------------------
+scrollback-limit = 50000
+mouse-scroll-multiplier = 3
+
+# ----------------------------------------------------------------------------
+# 클립보드 설정
+# ----------------------------------------------------------------------------
+clipboard-read = allow
+clipboard-write = allow
+clipboard-trim-trailing-spaces = true
+copy-on-select = true
+
+# ----------------------------------------------------------------------------
+# 기타 설정
+# ----------------------------------------------------------------------------
+confirm-close-surface = false
+bold-is-bright = false
+minimum-contrast = 1.0
+
+# 하이퍼링크
+link-url = true
+
+# 벨 알림 (Ghostty는 기본적으로 벨 비활성화)
+
+# 성능
+gtk-single-instance = true

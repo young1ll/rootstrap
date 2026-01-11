@@ -1,0 +1,367 @@
+# ============================================================================
+# Zsh Configuration
+# Ghostty + Zellij + AI CLI Development Environment
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# 성능 측정 (시작)
+# ----------------------------------------------------------------------------
+zmodload zsh/datetime
+zsh_start_time=$EPOCHREALTIME
+
+# ----------------------------------------------------------------------------
+# 환경 변수
+# ----------------------------------------------------------------------------
+export LANG=en_US.UTF-8
+export LC_ALL=en_US.UTF-8
+export EDITOR="nvim"
+export VISUAL="nvim"
+
+# PATH 설정
+export PATH="$HOME/.local/bin:$PATH"
+export PATH="/opt/homebrew/bin:$PATH"
+export PATH="/opt/homebrew/opt/mysql@8.0/bin:$PATH"
+
+# 히스토리 비활성화 (보안)
+export LESSHISTFILE=-
+
+# Dotfiles 경로
+export DOTFILES_DIR="$HOME/dotfiles"
+
+# ----------------------------------------------------------------------------
+# Antidote (Zsh 플러그인 매니저)
+# ----------------------------------------------------------------------------
+source $(brew --prefix)/opt/antidote/share/antidote/antidote.zsh
+antidote load
+
+# ----------------------------------------------------------------------------
+# Starship Prompt
+# ----------------------------------------------------------------------------
+eval "$(starship init zsh)"
+
+# ----------------------------------------------------------------------------
+# NVM (Node Version Manager)
+# ----------------------------------------------------------------------------
+export NVM_DIR="$HOME/.nvm"
+[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
+[ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
+
+# ----------------------------------------------------------------------------
+# Bun
+# ----------------------------------------------------------------------------
+[ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+
+# ----------------------------------------------------------------------------
+# Docker CLI Completions
+# ----------------------------------------------------------------------------
+fpath=($HOME/.docker/completions $fpath)
+autoload -Uz compinit
+compinit
+
+# ----------------------------------------------------------------------------
+# Fastfetch (시스템 정보) - Claude Code 외부에서만
+# ----------------------------------------------------------------------------
+if command -v fastfetch > /dev/null 2>&1 && [[ -z "$CLAUDE_CODE" ]]; then
+    fastfetch
+fi
+
+# ============================================================================
+# 별칭 (Aliases)
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# Zellij 통합 함수 (zj)
+# 사용법: zj [command|profile|session-name]
+# ----------------------------------------------------------------------------
+zj() {
+    local cmd="${1:-}"
+
+    case "$cmd" in
+        # 레이아웃 프로필
+        ai|aidev)
+            shift
+            local session_name="${1:-$(basename $PWD)}"
+            # ANSI 색상 코드 제거 후 세션 검색
+            if zellij list-sessions 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g' | grep -q "^$session_name "; then
+                echo "󰆍 세션 '$session_name' 연결..."
+                zellij attach "$session_name"
+            else
+                echo "󰆍 AI 개발 세션 '$session_name' 시작..."
+                zellij -n ai-dev -s "$session_name"
+            fi
+            ;;
+        min|minimal)
+            shift
+            local session_name="${1:-minimal}"
+            echo "󰆍 Minimal 세션 시작..."
+            zellij -n minimal -s "$session_name"
+            ;;
+        full|fullstack)
+            shift
+            local session_name="${1:-fullstack}"
+            echo "󰆍 Fullstack 세션 시작..."
+            zellij -n fullstack -s "$session_name"
+            ;;
+
+        # 세션 관리
+        ls|list)
+            zellij list-sessions
+            ;;
+        a|attach)
+            shift
+            if [[ -z "$1" ]]; then
+                # 세션 선택 (fzf 사용 가능하면)
+                if command -v fzf > /dev/null 2>&1; then
+                    local session=$(zellij list-sessions 2>/dev/null | fzf --prompt="세션 선택: ")
+                    [[ -n "$session" ]] && zellij attach "$session"
+                else
+                    zellij list-sessions
+                fi
+            else
+                zellij attach "$@"
+            fi
+            ;;
+        k|kill)
+            shift
+            zellij kill-session "$@"
+            ;;
+        ka|kill-all)
+            zellij kill-all-sessions
+            ;;
+
+        # 도움말
+        -h|--help|help)
+            cat << 'EOF'
+zj - Zellij 통합 명령어
+
+사용법: zj [command|profile|session-name]
+
+프로필:
+  ai, aidev [name]    AI 개발 환경 (nvim + claude + codex + lazygit)
+  min, minimal [name] 최소 레이아웃
+  full, fullstack [name] Fullstack 개발 환경
+
+세션 관리:
+  ls, list            세션 목록 표시
+  a, attach [name]    세션 연결 (이름 생략 시 선택)
+  k, kill <name>      세션 종료
+  ka, kill-all        모든 세션 종료
+
+예시:
+  zj                  기본 zellij 시작
+  zj ai               현재 디렉토리 이름으로 AI 세션 시작
+  zj ai myproject     'myproject' AI 세션 시작/연결
+  zj min              Minimal 세션 시작
+  zj mywork           'mywork' 세션 시작/연결
+EOF
+            ;;
+
+        # 기본: 세션 이름 또는 순수 zellij
+        *)
+            if [[ -n "$cmd" ]]; then
+                # 인자가 있으면 세션 이름으로 처리 (ANSI 코드 제거)
+                if zellij list-sessions 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g' | grep -q "^$cmd "; then
+                    echo "󰆍 세션 '$cmd' 연결..."
+                    zellij attach "$cmd"
+                else
+                    echo "󰆍 새 세션 '$cmd' 시작..."
+                    zellij --session "$cmd"
+                fi
+            else
+                # 인자 없으면 기본 zellij 또는 세션 매니저
+                if command -v fzf > /dev/null 2>&1; then
+                    local sessions=$(zellij list-sessions 2>/dev/null)
+                    if [[ -n "$sessions" ]]; then
+                        echo "기존 세션이 있습니다. 연결하시겠습니까?"
+                        local choice=$(echo -e "$sessions\n[새 세션]" | fzf --prompt="선택: ")
+                        if [[ "$choice" == "[새 세션]" ]]; then
+                            zellij
+                        elif [[ -n "$choice" ]]; then
+                            zellij attach "$choice"
+                        fi
+                    else
+                        zellij
+                    fi
+                else
+                    zellij
+                fi
+            fi
+            ;;
+    esac
+}
+
+# zj 자동완성
+_zj_completion() {
+    local -a commands profiles
+    commands=(
+        'ai:AI 개발 환경 시작'
+        'aidev:AI 개발 환경 시작 (ai와 동일)'
+        'min:Minimal 레이아웃'
+        'minimal:Minimal 레이아웃 (min과 동일)'
+        'full:Fullstack 개발 환경'
+        'fullstack:Fullstack 개발 환경 (full과 동일)'
+        'ls:세션 목록 표시'
+        'list:세션 목록 표시 (ls와 동일)'
+        'a:세션 연결'
+        'attach:세션 연결 (a와 동일)'
+        'k:세션 종료'
+        'kill:세션 종료 (k와 동일)'
+        'ka:모든 세션 종료'
+        'kill-all:모든 세션 종료 (ka와 동일)'
+        'help:도움말 표시'
+    )
+
+    if (( CURRENT == 2 )); then
+        # 첫 번째 인자: 명령어 또는 세션 이름
+        _describe 'command' commands
+        # 기존 세션 이름도 추가
+        local sessions=(${(f)"$(zellij list-sessions 2>/dev/null)"})
+        [[ -n "$sessions" ]] && _describe 'session' sessions
+    elif (( CURRENT == 3 )); then
+        # 두 번째 인자: attach/kill의 경우 세션 이름
+        case "${words[2]}" in
+            a|attach|k|kill)
+                local sessions=(${(f)"$(zellij list-sessions 2>/dev/null)"})
+                [[ -n "$sessions" ]] && _describe 'session' sessions
+                ;;
+        esac
+    fi
+}
+compdef _zj_completion zj
+
+# ----------------------------------------------------------------------------
+# AI CLI 별칭
+# ----------------------------------------------------------------------------
+# Claude Code
+alias cc="claude"
+alias ccp="claude -p"
+alias ccr="claude --resume"
+alias ccd="claude --dangerously-skip-permissions"
+
+# OpenAI Codex
+alias cx="codex"
+
+# ----------------------------------------------------------------------------
+# 개발 도구 별칭
+# ----------------------------------------------------------------------------
+alias dev='cd ~/SynologyDrive/_devspace'
+alias sudoclaude='claude --dangerously-skip-permissions'
+
+# TUI 도구
+alias lg="lazygit"
+alias ld="lazydocker"
+
+# 검색 도구 (ripgrep, fd)
+alias rg="rg --smart-case"
+alias f="fd"
+
+# Git 별칭
+alias g="git"
+alias gs="git status"
+alias ga="git add"
+alias gc="git commit"
+alias gp="git push"
+alias gl="git pull"
+alias gd="git diff"
+alias gco="git checkout"
+alias gb="git branch"
+alias glog="git log --oneline --graph --decorate"
+
+# 일반 별칭
+alias ll="ls -alh"
+alias la="ls -A"
+alias l="ls -CF"
+alias ..="cd .."
+alias ...="cd ../.."
+alias ....="cd ../../.."
+
+# 에디터
+alias v="nvim"
+alias vi="nvim"
+alias vim="nvim"
+
+# ============================================================================
+# 함수 (Functions)
+# ============================================================================
+
+# ----------------------------------------------------------------------------
+# 프로젝트 디렉토리로 이동 후 AI 세션 시작
+# 사용법: proj <project-name>
+# ----------------------------------------------------------------------------
+proj() {
+    local project_dir="$HOME/SynologyDrive/_devspace/$1"
+
+    if [[ -d "$project_dir" ]]; then
+        cd "$project_dir"
+        zj ai "$1"
+    else
+        echo "프로젝트를 찾을 수 없습니다: $project_dir"
+        echo "사용 가능한 프로젝트:"
+        ls -1 "$HOME/SynologyDrive/_devspace/" | head -20
+    fi
+}
+
+# ----------------------------------------------------------------------------
+# Claude와 Codex 동시 실행 (Zellij 분할)
+# ----------------------------------------------------------------------------
+dual_ai() {
+    if [[ -n "$ZELLIJ" ]]; then
+        zellij action new-pane --direction right -- codex
+        claude
+    else
+        echo "Zellij 세션 내에서 실행해주세요."
+        echo "시작하려면: zj ai"
+    fi
+}
+
+# ----------------------------------------------------------------------------
+# devhelp: 통합 도움말 시스템
+# ----------------------------------------------------------------------------
+devhelp() {
+    local cmd="${1:-}"
+    local help_script="$DOTFILES_DIR/bin/devhelp"
+
+    if [[ -x "$help_script" ]]; then
+        "$help_script" "$@"
+    else
+        echo "devhelp 스크립트를 찾을 수 없습니다."
+        echo "dotfiles를 다시 설치해주세요: $DOTFILES_DIR/install.sh link"
+    fi
+}
+
+# ----------------------------------------------------------------------------
+# 빠른 키바인딩 참조
+# ----------------------------------------------------------------------------
+keys() {
+    devhelp keys
+}
+
+# ============================================================================
+# Zellij 자동 시작 (Ghostty에서만)
+# ============================================================================
+if [[ "$TERM" == "xterm-ghostty" ]] && [[ -z "$ZELLIJ" ]] && [[ -z "$CLAUDE_CODE" ]]; then
+    # 자동 시작을 원하면 아래 주석 해제
+    # eval "$(zellij setup --generate-auto-start zsh)"
+    :
+fi
+
+# ----------------------------------------------------------------------------
+# 성능 측정 (종료) 및 표시
+# ----------------------------------------------------------------------------
+zsh_end_time=$EPOCHREALTIME
+zsh_load_time=$(echo "($zsh_end_time - $zsh_start_time) * 1000" | bc)
+
+if command -v gum > /dev/null 2>&1 && [[ -z "$CLAUDE_CODE" ]]; then
+    echo ""
+    gum style \
+        --border rounded \
+        --border-foreground 240 \
+        --padding "0 2" \
+        --foreground 51 \
+        --width $((COLUMNS - 10)) \
+        --align center \
+        --margin "0 auto" \
+        "zsh loaded in ${zsh_load_time}ms | devhelp for help"
+fi

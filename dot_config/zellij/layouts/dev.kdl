@@ -1,0 +1,38 @@
+// ============================================================================
+// Dev Layout - nvim(LazyVim) + Claude/Codex 개발 환경
+//
+// 사용법: zellij --layout dev
+// ============================================================================
+
+layout {
+    default_tab_template {
+        pane size=1 borderless=true {
+            plugin location="compact-bar"
+        }
+        children
+    }
+
+    // Tab 1: Editor - LazyVim
+    tab name="nvim" focus=true {
+        pane name="LazyVim" {
+            command "nvim"
+        }
+    }
+
+    // Tab 2: AI - Claude + Codex (split view)
+    tab name="AI" {
+        pane split_direction="vertical" {
+            pane name="Claude" size="50%" {
+                command "claude"
+            }
+            pane name="Codex" size="50%" {
+                command "codex"
+            }
+        }
+    }
+
+    // Tab 3: Terminal
+    tab name="term" {
+        pane name="Shell"
+    }
+}
