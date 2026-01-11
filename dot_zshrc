@@ -25,8 +25,8 @@ export PATH="/opt/homebrew/opt/mysql@8.0/bin:$PATH"
 # 히스토리 비활성화 (보안)
 export LESSHISTFILE=-
 
-# Dotfiles 경로
-export DOTFILES_DIR="$HOME/dotfiles"
+# Dotfiles 경로 (chezmoi)
+export DOTFILES_DIR="$HOME/.local/share/chezmoi"
 
 # ----------------------------------------------------------------------------
 # Antidote (Zsh 플러그인 매니저)
