@@ -1,6 +1,6 @@
 # ============================================================================
 # Ghostty Configuration
-# Ghostty + Zellij + AI CLI Development Environment
+# Ghostty + tmux Development Environment
 # ============================================================================
 
 # ----------------------------------------------------------------------------
@@ -42,10 +42,10 @@ background-opacity = 0.95
 # ----------------------------------------------------------------------------
 # macOS 전용 설정
 # ----------------------------------------------------------------------------
-# Option 키를 Alt로 사용 (Zellij 호환성)
+# Option 키를 Alt로 사용 (tmux Meta 키 활용)
 macos-option-as-alt = left
 
-# 네이티브 탭 비활성화 (Zellij 사용)
+# 네이티브 탭 비활성화 (tmux가 세션/창 관리)
 macos-titlebar-style = hidden
 macos-window-shadow = true
 
@@ -62,22 +62,15 @@ shell-integration-features = cursor,sudo,title
 
 # ----------------------------------------------------------------------------
 # 키바인딩
-# Zellij와 충돌하는 키바인딩 해제 및 커스텀 설정
+# tmux 환경용 — Ghostty는 단일 창, tmux가 모든 분할/탭 담당
 # ----------------------------------------------------------------------------
 
-# Zellij 충돌 방지: 기본 탭/창 단축키 해제
+# Ghostty 네이티브 탭/창 비활성화 (tmux에 위임)
 keybind = cmd+t=unbind
 keybind = cmd+n=unbind
 keybind = cmd+w=unbind
 
-# Alt 화살표 해제 (Zellij 네비게이션용)
-keybind = alt+left=unbind
-keybind = alt+right=unbind
-keybind = alt+up=unbind
-keybind = alt+down=unbind
-
-# 유용한 단축키 추가
-keybind = cmd+shift+enter=new_window
+# 유용한 단축키
 keybind = cmd+shift+comma=open_config
 keybind = cmd+shift+r=reload_config
 

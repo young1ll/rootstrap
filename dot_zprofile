@@ -1,20 +1,7 @@
 # ============================================================================
-# Zsh Profile
-# 로그인 셸에서만 실행되는 설정
+# Zsh Profile (로그인 셸에서만 실행)
 # ============================================================================
 
 # 히스토리 파일 비활성화 (보안)
 export LESSHISTFILE=-
 export VIMINFO='set viminfo='
-
-# Homebrew PATH
-export PATH="/opt/homebrew/bin:$PATH"
-
-# Local bin
-export PATH="$HOME/.local/bin:$PATH"
-
-# Dotfiles
-export DOTFILES_DIR="$HOME/dotfiles"
-
-# 개발 디렉토리 단축키
-alias dev='cd ~/SynologyDrive/_devspace'

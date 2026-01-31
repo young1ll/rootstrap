@@ -1,6 +1,6 @@
 # ============================================================================
 # Zsh Configuration
-# Ghostty + Zellij + AI CLI Development Environment
+# Ghostty + tmux + AI CLI Development Environment
 # ============================================================================
 
 # ----------------------------------------------------------------------------
@@ -10,28 +10,30 @@ zmodload zsh/datetime
 zsh_start_time=$EPOCHREALTIME
 
 # ----------------------------------------------------------------------------
-# 환경 변수
+# 환경 변수 (PATH는 .zshenv에서 관리)
 # ----------------------------------------------------------------------------
 export LANG=en_US.UTF-8
 export LC_ALL=en_US.UTF-8
-export EDITOR="nvim"
-export VISUAL="nvim"
-
-# PATH 설정
-export PATH="$HOME/.local/bin:$PATH"
-export PATH="/opt/homebrew/bin:$PATH"
-export PATH="/opt/homebrew/opt/mysql@8.0/bin:$PATH"
-
-# 히스토리 비활성화 (보안)
-export LESSHISTFILE=-
-
-# Dotfiles 경로 (chezmoi)
+export EDITOR="vim"
+export VISUAL="vim"
 export DOTFILES_DIR="$HOME/.local/share/chezmoi"
+
+# ----------------------------------------------------------------------------
+# 히스토리 설정
+# ----------------------------------------------------------------------------
+HISTFILE=~/.zsh_history
+HISTSIZE=10000
+SAVEHIST=10000
+setopt HIST_IGNORE_DUPS      # 연속 중복 무시
+setopt HIST_IGNORE_ALL_DUPS  # 전체 중복 제거
+setopt HIST_REDUCE_BLANKS    # 불필요한 공백 제거
+setopt SHARE_HISTORY         # 세션 간 히스토리 공유
+setopt HIST_IGNORE_SPACE     # 공백 시작 명령 무시 (비밀 명령용)
 
 # ----------------------------------------------------------------------------
 # Antidote (Zsh 플러그인 매니저)
 # ----------------------------------------------------------------------------
-source $(brew --prefix)/opt/antidote/share/antidote/antidote.zsh
+source /opt/homebrew/opt/antidote/share/antidote/antidote.zsh
 antidote load
 
 # ----------------------------------------------------------------------------
@@ -40,25 +42,36 @@ antidote load
 eval "$(starship init zsh)"
 
 # ----------------------------------------------------------------------------
-# NVM (Node Version Manager)
+# NVM (Node Version Manager) — 지연 로딩 (~200ms 절약)
 # ----------------------------------------------------------------------------
 export NVM_DIR="$HOME/.nvm"
-[ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
-[ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
+nvm() {
+    unfunction nvm node npm npx 2>/dev/null
+    [ -s "/opt/homebrew/opt/nvm/nvm.sh" ] && \. "/opt/homebrew/opt/nvm/nvm.sh"
+    [ -s "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm" ] && \. "/opt/homebrew/opt/nvm/etc/bash_completion.d/nvm"
+    nvm "$@"
+}
+node()  { nvm; command node "$@"; }
+npm()   { nvm; command npm "$@"; }
+npx()   { nvm; command npx "$@"; }
 
 # ----------------------------------------------------------------------------
 # Bun
 # ----------------------------------------------------------------------------
+# Bun completions (PATH는 .zshenv에서 관리)
+# ----------------------------------------------------------------------------
 [ -s "$HOME/.bun/_bun" ] && source "$HOME/.bun/_bun"
-export BUN_INSTALL="$HOME/.bun"
-export PATH="$BUN_INSTALL/bin:$PATH"
 
 # ----------------------------------------------------------------------------
-# Docker CLI Completions
+# Completions (compinit 1회만 호출, 1일 1회 캐시 갱신)
 # ----------------------------------------------------------------------------
 fpath=($HOME/.docker/completions $fpath)
 autoload -Uz compinit
-compinit
+if [[ -n ~/.zcompdump(#qN.mh+24) ]]; then
+    compinit
+else
+    compinit -C
+fi
 
 # ----------------------------------------------------------------------------
 # Fastfetch (시스템 정보) - Claude Code 외부에서만
@@ -72,182 +85,176 @@ fi
 # ============================================================================
 
 # ----------------------------------------------------------------------------
-# Zellij 통합 함수 (zj)
-# 사용법: zj [command|profile|session-name]
+# tmux 통합 함수 (t)
+# 사용법: t [command|session-name]
 # ----------------------------------------------------------------------------
-zj() {
+t() {
     local cmd="${1:-}"
 
     case "$cmd" in
-        # 레이아웃 프로필
-        ai|aidev)
+        # 개발 세션 (nvim + AI + Shell)
+        dev)
             shift
             local session_name="${1:-$(basename $PWD)}"
-            # ANSI 색상 코드 제거 후 세션 검색
-            if zellij list-sessions 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g' | grep -q "^$session_name "; then
+            if tmux has-session -t "$session_name" 2>/dev/null; then
                 echo "󰆍 세션 '$session_name' 연결..."
-                zellij attach "$session_name"
+                tmux attach -t "$session_name"
             else
-                echo "󰆍 AI 개발 세션 '$session_name' 시작..."
-                zellij -n ai-dev -s "$session_name"
+                echo "󰆍 개발 세션 '$session_name' 시작..."
+                tmux new-session -d -s "$session_name" -n nvim -c "#{pane_current_path}"
+                tmux send-keys -t "$session_name:nvim" "nvim" Enter
+                tmux new-window -t "$session_name" -n AI
+                tmux split-window -t "$session_name:AI" -h
+                tmux send-keys -t "$session_name:AI.0" "claude" Enter
+                tmux send-keys -t "$session_name:AI.1" "codex" Enter
+                tmux new-window -t "$session_name" -n shell
+                tmux select-window -t "$session_name:nvim"
+                tmux attach -t "$session_name"
             fi
-            ;;
-        min|minimal)
-            shift
-            local session_name="${1:-minimal}"
-            echo "󰆍 Minimal 세션 시작..."
-            zellij -n minimal -s "$session_name"
-            ;;
-        full|fullstack)
-            shift
-            local session_name="${1:-fullstack}"
-            echo "󰆍 Fullstack 세션 시작..."
-            zellij -n fullstack -s "$session_name"
             ;;
 
         # 세션 관리
         ls|list)
-            zellij list-sessions
+            tmux list-sessions 2>/dev/null || echo "세션 없음"
             ;;
         a|attach)
             shift
             if [[ -z "$1" ]]; then
-                # 세션 선택 (fzf 사용 가능하면)
                 if command -v fzf > /dev/null 2>&1; then
-                    local session=$(zellij list-sessions 2>/dev/null | fzf --prompt="세션 선택: ")
-                    [[ -n "$session" ]] && zellij attach "$session"
+                    local session=$(tmux list-sessions -F '#S' 2>/dev/null | fzf --prompt="세션 선택: ")
+                    [[ -n "$session" ]] && tmux attach -t "$session"
                 else
-                    zellij list-sessions
+                    tmux list-sessions
                 fi
             else
-                zellij attach "$@"
+                tmux attach -t "$@"
             fi
             ;;
         k|kill)
             shift
-            zellij kill-session "$@"
+            tmux kill-session -t "$@"
             ;;
         ka|kill-all)
-            zellij kill-all-sessions
+            tmux kill-server
             ;;
 
         # 도움말
         -h|--help|help)
             cat << 'EOF'
-zj - Zellij 통합 명령어
+t - tmux 통합 명령어
 
-사용법: zj [command|profile|session-name]
+사용법: t [command|session-name]
 
 프로필:
-  ai, aidev [name]    AI 개발 환경 (nvim + claude + codex + lazygit)
-  min, minimal [name] 최소 레이아웃
-  full, fullstack [name] Fullstack 개발 환경
+  dev [name]          개발 환경 (nvim + Claude/Codex + Shell)
 
 세션 관리:
-  ls, list            세션 목록 표시
-  a, attach [name]    세션 연결 (이름 생략 시 선택)
+  ls, list            세션 목록
+  a, attach [name]    세션 연결 (fzf 선택)
   k, kill <name>      세션 종료
-  ka, kill-all        모든 세션 종료
+  ka, kill-all        tmux 서버 종료
 
 예시:
-  zj                  기본 zellij 시작
-  zj ai               현재 디렉토리 이름으로 AI 세션 시작
-  zj ai myproject     'myproject' AI 세션 시작/연결
-  zj min              Minimal 세션 시작
-  zj mywork           'mywork' 세션 시작/연결
+  t dev               현재 디렉토리명으로 개발 세션 시작
+  t dev myproject     'myproject' 개발 세션
+  t mywork            'mywork' 세션 시작/연결
 EOF
             ;;
 
-        # 기본: 세션 이름 또는 순수 zellij
+        # 기본: 세션 이름 또는 fzf 선택
         *)
             if [[ -n "$cmd" ]]; then
-                # 인자가 있으면 세션 이름으로 처리 (ANSI 코드 제거)
-                if zellij list-sessions 2>/dev/null | sed 's/\x1b\[[0-9;]*m//g' | grep -q "^$cmd "; then
-                    echo "󰆍 세션 '$cmd' 연결..."
-                    zellij attach "$cmd"
+                if tmux has-session -t "$cmd" 2>/dev/null; then
+                    tmux attach -t "$cmd"
                 else
-                    echo "󰆍 새 세션 '$cmd' 시작..."
-                    zellij --session "$cmd"
+                    tmux new-session -s "$cmd"
                 fi
             else
-                # 인자 없으면 기본 zellij 또는 세션 매니저
                 if command -v fzf > /dev/null 2>&1; then
-                    local sessions=$(zellij list-sessions 2>/dev/null)
+                    local sessions=$(tmux list-sessions -F '#S' 2>/dev/null)
                     if [[ -n "$sessions" ]]; then
-                        echo "기존 세션이 있습니다. 연결하시겠습니까?"
                         local choice=$(echo -e "$sessions\n[새 세션]" | fzf --prompt="선택: ")
                         if [[ "$choice" == "[새 세션]" ]]; then
-                            zellij
+                            tmux new-session
                         elif [[ -n "$choice" ]]; then
-                            zellij attach "$choice"
+                            tmux attach -t "$choice"
                         fi
                     else
-                        zellij
+                        tmux new-session
                     fi
                 else
-                    zellij
+                    tmux
                 fi
             fi
             ;;
     esac
 }
 
-# zj 자동완성
-_zj_completion() {
-    local -a commands profiles
+# t 자동완성
+_t_completion() {
+    local -a commands
     commands=(
-        'ai:AI 개발 환경 시작'
-        'aidev:AI 개발 환경 시작 (ai와 동일)'
-        'min:Minimal 레이아웃'
-        'minimal:Minimal 레이아웃 (min과 동일)'
-        'full:Fullstack 개발 환경'
-        'fullstack:Fullstack 개발 환경 (full과 동일)'
-        'ls:세션 목록 표시'
-        'list:세션 목록 표시 (ls와 동일)'
+        'dev:개발 환경 (nvim + AI + Shell)'
+        'ls:세션 목록'
+        'list:세션 목록 (ls와 동일)'
         'a:세션 연결'
         'attach:세션 연결 (a와 동일)'
         'k:세션 종료'
         'kill:세션 종료 (k와 동일)'
-        'ka:모든 세션 종료'
-        'kill-all:모든 세션 종료 (ka와 동일)'
-        'help:도움말 표시'
+        'ka:tmux 서버 종료'
+        'kill-all:tmux 서버 종료 (ka와 동일)'
+        'help:도움말'
     )
 
     if (( CURRENT == 2 )); then
-        # 첫 번째 인자: 명령어 또는 세션 이름
         _describe 'command' commands
-        # 기존 세션 이름도 추가
-        local sessions=(${(f)"$(zellij list-sessions 2>/dev/null)"})
+        local sessions=(${(f)"$(tmux list-sessions -F '#S' 2>/dev/null)"})
         [[ -n "$sessions" ]] && _describe 'session' sessions
     elif (( CURRENT == 3 )); then
-        # 두 번째 인자: attach/kill의 경우 세션 이름
         case "${words[2]}" in
             a|attach|k|kill)
-                local sessions=(${(f)"$(zellij list-sessions 2>/dev/null)"})
+                local sessions=(${(f)"$(tmux list-sessions -F '#S' 2>/dev/null)"})
                 [[ -n "$sessions" ]] && _describe 'session' sessions
                 ;;
         esac
     fi
 }
-compdef _zj_completion zj
+compdef _t_completion t
 
 # ----------------------------------------------------------------------------
-# AI CLI 별칭
+# AI CLI (tmux 자동 세션)
+# tmux 밖에서 실행하면 자동으로 tmux 세션 안에서 시작
 # ----------------------------------------------------------------------------
-# Claude Code
-alias cc="claude"
-alias ccp="claude -p"
-alias ccr="claude --resume"
-alias ccd="claude --dangerously-skip-permissions"
+_ai_in_tmux() {
+    local name="$1"; shift
+    local cmd="$1"; shift
+    if [[ -n "$TMUX" ]]; then
+        command $cmd "$@"
+    else
+        if tmux has-session -t "$name" 2>/dev/null; then
+            tmux attach -t "$name"
+        else
+            tmux new-session -s "$name" "$cmd" "$@"
+        fi
+    fi
+}
 
-# OpenAI Codex
-alias cx="codex"
+claude()  { _ai_in_tmux claude  claude  "$@"; }
+codex()   { _ai_in_tmux codex   codex   "$@"; }
+gemini()  { _ai_in_tmux gemini  gemini  "$@"; }
+
+# 단축 (모두 tmux 자동 세션)
+cc()  { _ai_in_tmux claude  claude  "$@"; }
+ccp() { _ai_in_tmux claude  claude  -p "$@"; }
+ccr() { _ai_in_tmux claude  claude  --resume "$@"; }
+ccd() { _ai_in_tmux claude  claude  --dangerously-skip-permissions "$@"; }
+cx()  { _ai_in_tmux codex   codex   "$@"; }
+gmn() { _ai_in_tmux gemini  gemini  "$@"; }
 
 # ----------------------------------------------------------------------------
 # 개발 도구 별칭
 # ----------------------------------------------------------------------------
 alias dev='cd ~/SynologyDrive/_devspace'
-alias sudoclaude='claude --dangerously-skip-permissions'
 
 # TUI 도구
 alias lg="lazygit"
@@ -278,9 +285,7 @@ alias ...="cd ../.."
 alias ....="cd ../../.."
 
 # 에디터
-alias v="nvim"
-alias vi="nvim"
-alias vim="nvim"
+alias v="vim"
 
 # ============================================================================
 # 함수 (Functions)
@@ -295,7 +300,7 @@ proj() {
 
     if [[ -d "$project_dir" ]]; then
         cd "$project_dir"
-        zj ai "$1"
+        t dev "$1"
     else
         echo "프로젝트를 찾을 수 없습니다: $project_dir"
         echo "사용 가능한 프로젝트:"
@@ -304,15 +309,15 @@ proj() {
 }
 
 # ----------------------------------------------------------------------------
-# Claude와 Codex 동시 실행 (Zellij 분할)
+# Claude와 Codex 동시 실행 (tmux 분할)
 # ----------------------------------------------------------------------------
 dual_ai() {
-    if [[ -n "$ZELLIJ" ]]; then
-        zellij action new-pane --direction right -- codex
+    if [[ -n "$TMUX" ]]; then
+        tmux split-window -h "codex"
         claude
     else
-        echo "Zellij 세션 내에서 실행해주세요."
-        echo "시작하려면: zj ai"
+        echo "tmux 세션 내에서 실행해주세요."
+        echo "시작하려면: t dev"
     fi
 }
 
@@ -339,11 +344,11 @@ keys() {
 }
 
 # ============================================================================
-# Zellij 자동 시작 (Ghostty에서만)
+# tmux 자동 시작 (Ghostty에서만)
 # ============================================================================
-if [[ "$TERM" == "xterm-ghostty" ]] && [[ -z "$ZELLIJ" ]] && [[ -z "$CLAUDE_CODE" ]]; then
+if [[ "$TERM" == "xterm-ghostty" ]] && [[ -z "$TMUX" ]] && [[ -z "$CLAUDE_CODE" ]]; then
     # 자동 시작을 원하면 아래 주석 해제
-    # eval "$(zellij setup --generate-auto-start zsh)"
+    # tmux new-session -A -s main
     :
 fi
 

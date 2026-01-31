@@ -1,2 +1,23 @@
-# uv
-export PATH="/Users/young1ll/.local/bin:$PATH"
+# ============================================================================
+# Zsh Environment (모든 셸에서 로드)
+# PATH는 여기서만 정의
+# ============================================================================
+
+# 중복 PATH 방지
+typeset -U PATH path
+
+# Homebrew
+export PATH="/opt/homebrew/bin:$PATH"
+
+# Local bin (uv, pip 등)
+export PATH="$HOME/.local/bin:$PATH"
+
+# Cargo (Rust)
+. "$HOME/.cargo/env"
+
+# Bun
+export BUN_INSTALL="$HOME/.bun"
+export PATH="$BUN_INSTALL/bin:$PATH"
+
+# MySQL
+export PATH="/opt/homebrew/opt/mysql@8.0/bin:$PATH"

@@ -1,0 +1,69 @@
+[user]
+	name = Young ill Cho
+	email = young1ll@beneeds.co.kr
+	signingkey = ~/.ssh/id_ed25519
+[gpg]
+	format = ssh
+
+[column]
+	ui = auto
+[branch]
+	sort = committerdate
+[tag]
+	sort = version:refname
+	gpgsign = true
+
+[init]
+	defaultBranch = main
+[diff]
+	algorithm = histogram
+	colorMoved = plain
+	mnemonicPrefix = true
+	renames = true
+[push]
+	default = simple
+	autoSetupRemote = true
+	followTags = true
+[fetch]
+	prune = true
+	pruneTags = true
+	all = true
+[pull]
+	rebase = true
+[help]
+	autocorrect = prompt
+[commit]
+	verbose = true
+	gpgsign = true
+[rerere]
+	enabled = true
+	autoupdate = true
+[core]
+	excludesFile = ~/.gitignore
+	fsmonitor = true
+	untrackedCache = true
+	pager = delta
+[rebase]
+	autoSquash = true
+	autoStash = true
+	updateRefs = true
+[credential]
+	helper = osxkeychain
+
+[interactive]
+	diffFilter = delta --color-only
+[delta]
+	navigate = true
+	line-numbers = true
+	side-by-side = false
+[merge]
+	conflictstyle = zdiff3
+
+[alias]
+	lg = log --oneline --graph --decorate --all
+	amend = commit --amend --no-edit
+	undo = reset --soft HEAD~1
+	wip = !git add -A && git commit -m 'wip'
+	sync = !git pull --rebase && git push
+	branches = branch -a --sort=-committerdate
+	stash-all = stash push -u -m
